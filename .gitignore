@@ -1,0 +1,12 @@
+# Xcode / Swift
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+.swiftpm/
+.DS_Store
+
+# Generado por xcodegen (project.yml es la fuente de verdad)
+MemPulse.xcodeproj/
+MemPulse/Info.plist

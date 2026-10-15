@@ -16,6 +16,7 @@ Open the menu to see:
   (Chrome counts its *Helpers* and *Renderers* together, not one by one).
 - A **Quit** button for each app. Hold **⌥ Option** while clicking it to force quit.
 - A toggle to launch MemPulse at login.
+- English and Spanish, picked automatically from your macOS language settings.
 
 Built to spare your SSD from unnecessary swap, without opening Activity Monitor.
 
@@ -50,6 +51,8 @@ sends one when pressure becomes critical.
 | Swap | `sysctl vm.swapusage` |
 | RAM | `host_statistics64` (`HOST_VM_INFO64`) |
 | Top apps | `/bin/ps -axo pid=,rss=,comm=` every 5 s, grouped by the enclosing `.app` |
+
+UI strings live in `MemPulse/Localizable.xcstrings` (English source, Spanish translation).
 
 No third-party dependencies. No App Sandbox, because it runs `/bin/ps`.
 

@@ -33,7 +33,7 @@ Exercise the pressure levels at runtime: `sudo memory_pressure -l warn -S -s 15`
 `SystemStats` is a stateless enum of free functions:
 - `swapUsed()` — `sysctl vm.swapusage`
 - `memoryStats()` — Mach `host_statistics64` / `HOST_VM_INFO64`
-- `topProcesses()` — spawns `/bin/ps -axo pid=,rss=,comm=`, then `parseProcLines` (the pure, testable seam; `rss` is KB, `comm` is a path that may contain spaces). It groups processes by their outermost `.app` and keeps the pid of the main executable (`X.app/Contents/MacOS/…`) so "Cerrar" quits the whole app (⌥ = `forceTerminate`)
+- `topProcesses()` — spawns `/bin/ps -axo pid=,rss=,comm=`, then `parseProcLines` (the pure, testable seam; `rss` is KB, `comm` is a path that may contain spaces). It groups processes by their outermost `.app` and keeps the pid of the main executable (`X.app/Contents/MacOS/…`) so "Quit" quits the whole app (⌥ = `forceTerminate`)
 
 `dotImage` renders a non-template `NSImage` so the menu bar keeps the real color instead of tinting it monochrome.
 
@@ -43,3 +43,4 @@ Tests cover only `parseProcLines` (sorting + app grouping) and a swap sanity bou
 
 - **No App Sandbox** (the app shells out to `/bin/ps`). Hardened runtime is on. Don't add the sandbox entitlement without replacing the `ps` call.
 - Deployment target macOS 14.0, Swift 5. `SMAppService` provides launch-at-login.
+- UI strings are English source keys in `MemPulse/Localizable.xcstrings` with Spanish translations; macOS picks the language from system settings. `Text`/`Button` literals localize automatically; plain `String`s need `String(localized:)`. Add every new string to the catalog in both languages.

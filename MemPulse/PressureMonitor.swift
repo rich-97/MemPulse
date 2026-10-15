@@ -2,15 +2,15 @@ import AppKit
 import SwiftUI
 import UserNotifications
 
-/// Observa la presión de memoria del sistema (mismo semáforo que Activity Monitor)
-/// y refresca swap / RAM / top procesos cada 5 s.
+/// Watches system memory pressure (same traffic light as Activity Monitor)
+/// and refreshes swap / RAM / top processes every 5 s.
 @MainActor
 final class PressureMonitor: ObservableObject {
 
     enum Level {
         case normal, warning, critical
 
-        /// Valores de `kern.memorystatus_vm_pressure_level`.
+        /// Values of `kern.memorystatus_vm_pressure_level`.
         init(kernel: Int32) {
             switch kernel {
             case 4:  self = .critical
@@ -28,9 +28,9 @@ final class PressureMonitor: ObservableObject {
         }
         var label: String {
             switch self {
-            case .normal:   return "Normal"
-            case .warning:  return "Elevada"
-            case .critical: return "Crítica"
+            case .normal:   return String(localized: "Normal")
+            case .warning:  return String(localized: "Elevated")
+            case .critical: return String(localized: "Critical")
             }
         }
     }
@@ -76,8 +76,8 @@ final class PressureMonitor: ObservableObject {
 
     private func notifyCritical() {
         let content = UNMutableNotificationContent()
-        content.title = "Presión de memoria crítica"
-        content.body = "El Mac está usando swap intensivamente. Cierra alguna app."
+        content.title = String(localized: "Critical memory pressure")
+        content.body = String(localized: "Your Mac is swapping heavily. Quit an app to free memory.")
         content.sound = .default
         UNUserNotificationCenter.current().add(
             UNNotificationRequest(identifier: "critical", content: content, trigger: nil))
@@ -96,8 +96,8 @@ final class PressureMonitor: ObservableObject {
         }
     }
 
-    /// Círculo relleno con el color del nivel. `isTemplate = false` para que la
-    /// barra de menú respete el color en vez de teñirlo.
+    /// Filled circle in the level's color. `isTemplate = false` so the menu bar
+    /// keeps the color instead of tinting it.
     var dotImage: NSImage {
         let image = NSImage(size: NSSize(width: 16, height: 16))
         image.lockFocus()

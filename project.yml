@@ -4,6 +4,7 @@ options:
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
+  developmentLanguage: en
 
 settings:
   base:
@@ -12,7 +13,7 @@ settings:
     SWIFT_VERSION: "5.0"
     CODE_SIGN_STYLE: Automatic
     ENABLE_HARDENED_RUNTIME: YES
-    # Sin App Sandbox: la app lanza /bin/ps para listar procesos.
+    # No App Sandbox: the app runs /bin/ps to list processes.
 
 targets:
   MemPulse:

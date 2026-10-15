@@ -10,7 +10,7 @@ struct ProcInfo: Identifiable, Equatable {
 
 enum SystemStats {
 
-    /// Swap usada por el sistema, en bytes. `sysctl vm.swapusage`.
+    /// System swap in use, in bytes. `sysctl vm.swapusage`.
     static func swapUsed() -> UInt64 {
         var usage = xsw_usage()
         var size = MemoryLayout<xsw_usage>.stride
@@ -18,9 +18,9 @@ enum SystemStats {
         return usage.xsu_used
     }
 
-    /// Nivel de presión actual según el kernel: 1 normal, 2 warn, 4 critical.
-    /// `sysctl kern.memorystatus_vm_pressure_level`. El DispatchSource solo avisa
-    /// de cambios, así que esto da el estado inicial al arrancar.
+    /// Current kernel pressure level: 1 normal, 2 warn, 4 critical.
+    /// `sysctl kern.memorystatus_vm_pressure_level`. The DispatchSource only fires
+    /// on changes, so this provides the initial state at launch.
     static func pressureLevel() -> Int32 {
         var level: Int32 = 1
         var size = MemoryLayout<Int32>.size
@@ -28,8 +28,8 @@ enum SystemStats {
         return level
     }
 
-    /// Memoria física, en bytes. `host_statistics64` / `HOST_VM_INFO64`.
-    /// No cubierto por tests: pegamento de Mach. Se contrasta a mano con Activity Monitor.
+    /// Physical memory, in bytes. `host_statistics64` / `HOST_VM_INFO64`.
+    /// Not covered by tests: Mach glue, verified by hand against Activity Monitor.
     static func memoryStats() -> (used: UInt64, compressed: UInt64, free: UInt64) {
         var stats = vm_statistics64_data_t()
         var count = mach_msg_type_number_t(
@@ -48,7 +48,7 @@ enum SystemStats {
         return (used: used, compressed: compressed, free: UInt64(stats.free_count) * page)
     }
 
-    /// Procesos que más memoria residente usan, de mayor a menor.
+    /// Processes using the most resident memory, largest first.
     static func topProcesses(limit: Int = 5) -> [ProcInfo] {
         let ps = Process()
         ps.executableURL = URL(fileURLWithPath: "/bin/ps")
@@ -62,11 +62,11 @@ enum SystemStats {
         return parseProcLines(String(decoding: data, as: UTF8.self), limit: limit)
     }
 
-    /// Parsea la salida de `ps -axo pid=,rss=,comm=` y agrupa por app.
-    /// `rss` viene en KB; `comm` es una ruta que puede contener espacios.
-    /// Los procesos dentro de un `.app` (helpers, renderers…) suman a la app más
-    /// externa; el pid que se guarda es el del ejecutable principal
-    /// (`X.app/Contents/MacOS/…`) para que "Cerrar" cierre la app entera.
+    /// Parses `ps -axo pid=,rss=,comm=` output and groups it by app.
+    /// `rss` is in KB; `comm` is a path that may contain spaces.
+    /// Processes inside a `.app` (helpers, renderers…) add up under the outermost
+    /// app; the stored pid is the main executable's (`X.app/Contents/MacOS/…`)
+    /// so "Quit" quits the whole app.
     static func parseProcLines(_ output: String, limit: Int = 5) -> [ProcInfo] {
         var groups: [String: ProcInfo] = [:]
         for rawLine in output.split(separator: "\n") {

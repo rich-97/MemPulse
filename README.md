@@ -1,52 +1,72 @@
 # MemPulse
 
-Punto de color en la barra de menú que indica la **presión de memoria** del
-sistema, con el mismo semáforo que Activity Monitor:
+Un punto de color en la barra de menú de macOS que muestra la **presión de
+memoria** del sistema, el mismo semáforo que usa Activity Monitor:
 
-- 🟢 **verde** — normal, el Mac no está tirando de swap de forma agresiva
-- 🟡 **amarillo** — presión elevada
-- 🔴 **rojo** — presión crítica, cierra algo
+| Punto | Presión | Qué significa |
+|:-----:|---------|---------------|
+| 🟢 | Normal   | El Mac va sobrado de memoria. |
+| 🟡 | Elevada  | Empieza a comprimir y a tirar de swap. |
+| 🔴 | Crítica  | Swap intensiva: cierra algo. Recibes una notificación. |
 
-Al abrir el menú se ve la swap usada, la RAM usada/comprimida y las 5 apps que
-más memoria consumen, con un botón para cerrarlas.
+Al abrir el menú ves:
 
-Pensado para cuidar la salud del SSD evitando swap innecesaria.
+- Swap usada, RAM usada y RAM comprimida.
+- Las **5 apps que más memoria usan**, sumando todos sus procesos
+  (Chrome cuenta con todos sus *Helpers* y *Renderers*, no por separado).
+- Un botón **Cerrar** por app. Mantén **⌥ Option** al pulsarlo para forzar el cierre.
+- Opción para abrir MemPulse al iniciar sesión.
 
-## Compilar
+Pensado para cuidar el SSD evitando swap innecesaria, sin abrir Activity Monitor.
 
-Necesita [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
-El `.xcodeproj` se genera, no se versiona.
+## Requisitos
+
+- macOS 14 (Sonoma) o posterior.
+- Xcode 15+ y [XcodeGen](https://github.com/yonaskolb/XcodeGen) para compilar.
+
+## Instalación
 
 ```sh
+brew install xcodegen
+git clone https://github.com/rich-97/macos-mem-pulse.git
+cd macos-mem-pulse
 xcodegen generate
-open MemPulse.xcodeproj      # y Cmd+R en Xcode
+xcodebuild -scheme MemPulse -configuration Release -destination 'platform=macOS' build
 ```
 
-O desde terminal:
+El `.app` queda en
+`~/Library/Developer/Xcode/DerivedData/MemPulse-*/Build/Products/Release/MemPulse.app`.
+Cópialo a `/Applications` y ábrelo. También puedes abrir `MemPulse.xcodeproj` en
+Xcode y pulsar ⌘R.
 
-```sh
-xcodebuild -scheme MemPulse -destination 'platform=macOS' build
-xcodebuild test -scheme MemPulse -destination 'platform=macOS'
-```
-
-El binario queda en `~/Library/Developer/Xcode/DerivedData/MemPulse-*/Build/Products/`.
-Arrástralo a `/Applications` para dejarlo fijo.
+La primera vez macOS pedirá permiso para enviar notificaciones (solo se usan
+cuando la presión pasa a crítica).
 
 ## Cómo funciona
 
-- Color: `DispatchSource.makeMemoryPressureSource` — el kernel avisa al cambiar,
-  sin sondeo.
-- Swap: `sysctl vm.swapusage`.
-- RAM: `host_statistics64` (`HOST_VM_INFO64`).
-- Top procesos: `/bin/ps -axo pid=,rss=,comm=` cada 5 s.
+| Dato | Fuente |
+|------|--------|
+| Color del punto | `DispatchSource.makeMemoryPressureSource`: el kernel avisa al cambiar, sin sondeo. Al arrancar se lee el estado actual con `sysctl kern.memorystatus_vm_pressure_level`. |
+| Swap | `sysctl vm.swapusage` |
+| RAM | `host_statistics64` (`HOST_VM_INFO64`) |
+| Top apps | `/bin/ps -axo pid=,rss=,comm=` cada 5 s, agrupado por el `.app` contenedor |
 
-Sin App Sandbox (lanza `ps`). Sin dependencias de terceros en runtime.
+Sin dependencias de terceros. Sin App Sandbox, porque necesita lanzar `/bin/ps`.
 
-## Probar la presión de memoria
+## Desarrollo
+
+`project.yml` es la fuente de verdad; el `.xcodeproj` se genera y no se versiona.
+Tras añadir o quitar archivos, vuelve a ejecutar `xcodegen generate`.
+
+```sh
+xcodebuild test -scheme MemPulse -destination 'platform=macOS'
+```
+
+Para ver los colores sin llenar la RAM de verdad:
 
 ```sh
 sudo memory_pressure -l warn     -S -s 15   # → amarillo
-sudo memory_pressure -l critical -S -s 15   # → rojo
+sudo memory_pressure -l critical -S -s 15   # → rojo + notificación
 ```
 
 El punto vuelve a verde al terminar.

@@ -18,6 +18,16 @@ enum SystemStats {
         return usage.xsu_used
     }
 
+    /// Nivel de presión actual según el kernel: 1 normal, 2 warn, 4 critical.
+    /// `sysctl kern.memorystatus_vm_pressure_level`. El DispatchSource solo avisa
+    /// de cambios, así que esto da el estado inicial al arrancar.
+    static func pressureLevel() -> Int32 {
+        var level: Int32 = 1
+        var size = MemoryLayout<Int32>.size
+        _ = sysctlbyname("kern.memorystatus_vm_pressure_level", &level, &size, nil, 0)
+        return level
+    }
+
     /// Memoria física, en bytes. `host_statistics64` / `HOST_VM_INFO64`.
     /// No cubierto por tests: pegamento de Mach. Se contrasta a mano con Activity Monitor.
     static func memoryStats() -> (used: UInt64, compressed: UInt64, free: UInt64) {
@@ -52,10 +62,13 @@ enum SystemStats {
         return parseProcLines(String(decoding: data, as: UTF8.self), limit: limit)
     }
 
-    /// Parsea la salida de `ps -axo pid=,rss=,comm=`.
+    /// Parsea la salida de `ps -axo pid=,rss=,comm=` y agrupa por app.
     /// `rss` viene en KB; `comm` es una ruta que puede contener espacios.
+    /// Los procesos dentro de un `.app` (helpers, renderers…) suman a la app más
+    /// externa; el pid que se guarda es el del ejecutable principal
+    /// (`X.app/Contents/MacOS/…`) para que "Cerrar" cierre la app entera.
     static func parseProcLines(_ output: String, limit: Int = 5) -> [ProcInfo] {
-        var procs: [ProcInfo] = []
+        var groups: [String: ProcInfo] = [:]
         for rawLine in output.split(separator: "\n") {
             let line = String(rawLine)
             let scanner = Scanner(string: line)
@@ -63,9 +76,20 @@ enum SystemStats {
                   let rssKB = scanner.scanUInt64() else { continue }
             let path = String(line[scanner.currentIndex...]).trimmingCharacters(in: .whitespaces)
             guard !path.isEmpty else { continue }
-            let name = path.split(separator: "/").last.map(String.init) ?? path
-            procs.append(ProcInfo(pid: Int32(truncatingIfNeeded: pid), name: name, bytes: rssKB * 1024))
+
+            let parts = path.components(separatedBy: ".app/")
+            let base = parts.count > 1 ? parts[0] : path
+            let name = base.split(separator: "/").last.map(String.init) ?? base
+            let isMain = parts.count > 1 && parts[1].hasPrefix("Contents/MacOS/")
+            let pid32 = Int32(truncatingIfNeeded: pid)
+            let bytes = rssKB * 1024
+
+            if let g = groups[name] {
+                groups[name] = ProcInfo(pid: isMain ? pid32 : g.pid, name: name, bytes: g.bytes + bytes)
+            } else {
+                groups[name] = ProcInfo(pid: pid32, name: name, bytes: bytes)
+            }
         }
-        return Array(procs.sorted { $0.bytes > $1.bytes }.prefix(limit))
+        return Array(groups.values.sorted { $0.bytes > $1.bytes }.prefix(limit))
     }
 }

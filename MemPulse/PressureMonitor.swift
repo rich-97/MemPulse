@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UserNotifications
 
 /// Observa la presión de memoria del sistema (mismo semáforo que Activity Monitor)
 /// y refresca swap / RAM / top procesos cada 5 s.
@@ -8,6 +9,15 @@ final class PressureMonitor: ObservableObject {
 
     enum Level {
         case normal, warning, critical
+
+        /// Valores de `kern.memorystatus_vm_pressure_level`.
+        init(kernel: Int32) {
+            switch kernel {
+            case 4:  self = .critical
+            case 2:  self = .warning
+            default: self = .normal
+            }
+        }
 
         var color: NSColor {
             switch self {
@@ -41,19 +51,36 @@ final class PressureMonitor: ObservableObject {
             guard let self else { return }
             let event = self.pressureSource.data
             if event.contains(.critical) {
-                self.level = .critical
+                self.setLevel(.critical)
             } else if event.contains(.warning) {
-                self.level = .warning
+                self.setLevel(.warning)
             } else {
-                self.level = .normal
+                self.setLevel(.normal)
             }
         }
         pressureSource.resume()
+        level = Level(kernel: SystemStats.pressureLevel())
+
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
 
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
+    }
+
+    private func setLevel(_ new: Level) {
+        if new == .critical && level != .critical { notifyCritical() }
+        level = new
+    }
+
+    private func notifyCritical() {
+        let content = UNMutableNotificationContent()
+        content.title = "Presión de memoria crítica"
+        content.body = "El Mac está usando swap intensivamente. Cierra alguna app."
+        content.sound = .default
+        UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: "critical", content: content, trigger: nil))
     }
 
     func refresh() {

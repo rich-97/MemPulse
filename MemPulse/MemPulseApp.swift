@@ -52,8 +52,11 @@ struct MenuContent: View {
                         .monospacedDigit()
                     if let app = NSRunningApplication(processIdentifier: proc.pid),
                        app.activationPolicy == .regular {
-                        Button("Cerrar") { app.terminate() }
+                        Button("Cerrar") {
+                            NSEvent.modifierFlags.contains(.option) ? app.forceTerminate() : app.terminate()
+                        }
                             .buttonStyle(.borderless)
+                            .help("Mantén ⌥ para forzar el cierre")
                             .controlSize(.small)
                     }
                 }

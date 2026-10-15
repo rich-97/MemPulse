@@ -70,3 +70,7 @@ sudo memory_pressure -l critical -S -s 15   # → rojo + notificación
 ```
 
 El punto vuelve a verde al terminar.
+
+## Licencia
+
+[MIT](LICENSE)
